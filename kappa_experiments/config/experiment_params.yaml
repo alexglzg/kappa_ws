@@ -1,0 +1,66 @@
+experiment_node:
+  ros__parameters:
+    scenario: 1
+    session_name: "session"
+    # 'measured': plan from the Vive pose at the time of the /plan call
+    # 'predefined': plan from the scenario's nominal start pose
+    start_pose_source: "measured"
+    placement_tol_xy: 0.05        # m
+    placement_tol_yaw: 0.10       # rad
+    enforce_placement_tolerance: false
+    assumptions: "standing"
+    # Reference sample time; must equal the MPC control period. The launch
+    # files derive both from their single control_rate argument and override
+    # this value, so change control_rate rather than this line.
+    sampling_dt: 0.1
+
+    v_max: 0.5
+    v_min: 0.0
+    omega_max: 2.0
+    omega_min: -2.0
+    robot_width: 0.34
+    robot_length: 0.34
+
+    map_frame: "map"
+    # Overridden by the launch files: /rosbot3/vive/pose in the lab,
+    # /vive/pose in sim (box_sim). This value only applies to a bare
+    # `ros2 run kappa_experiments experiment_node`.
+    pose_topic: "/vive/pose"
+    path_topic: "/rosbot2pro/planned_path"
+    initialpose_topic: "/initialpose"
+
+    plot_projection_area: true
+    plot_shrunken_corridors: true
+    plot_circles: true
+    plot_piece_boundaries: true
+    show_measured_pose: true
+    line_width: 0.03
+    trajectory_line_width: 0.04
+    marker_z: 0.01
+    text_height: 0.15
+
+metrics_node:
+  ros__parameters:
+    # Topics are set from the launch arguments (pose_topic / cmd_topic /
+    # cmd_type), so that experiment_node and metrics_node always listen to the
+    # same pose topic.
+    plan_info_topic: "/experiment_node/plan_info"
+    finished_topic: "/finished_tracking"
+    # End criterion for a run, kept equal to what mpc_test_node stops on:
+    # 'pose' = within goal_radius AND heading_tolerance of the goal pose
+    # ('position' ignores the heading; the _to_radius baselines follow the
+    # choice, so timings stay comparable either way).
+    end_criterion: "pose"
+    goal_radius: 0.05             # = MPC tolerance_radius
+    heading_tolerance: 0.10       # rad, = MPC heading_tolerance
+    # 'first_cmd' | 'first_nonzero_cmd' | 'first_motion'; the other two are
+    # computed and reported as well.
+    start_event: "first_nonzero_cmd"
+    v_eps: 0.01                   # |v| above which a command counts as non-zero
+    w_eps: 0.05                   # |omega| idem
+    motion_eps_xy: 0.01           # displacement counting as "moving"
+    motion_eps_yaw: 0.035
+    run_timeout_factor: 3.0       # timeout = factor * theoretical_time + margin
+    run_timeout_margin: 10.0
+    live_period: 2.0              # s between live status lines
+    output_dir: "~/kappa_experiment_logs"

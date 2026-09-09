@@ -1,0 +1,3 @@
+[submodule "kappa-motion-planner"]
+	path = kappa-motion-planner
+	url = https://github.com/soniadesantis/kappa-motion-planner.git

@@ -2,7 +2,7 @@
 
 Usage (inside the sourced workspace):
     ros2 run kappa_experiments postprocess /path/to/bag_dir [-o out_dir] \
-        [--pose-topic /vive/pose] [--cmd-topic /rosbot3/cmd_vel]
+        [--pose-topic /robot_pose] [--cmd-topic /rosbot3/cmd_vel]
 
 Reads pose, command, plan_info and finished_tracking messages from a rosbag2
 (sqlite3 or mcap), splits the bag into runs at each plan_info message, and
@@ -167,7 +167,7 @@ def main(argv=None):
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('bag', help='rosbag2 directory')
     ap.add_argument('-o', '--out', default=None, help='output directory (default: <bag>/postprocess)')
-    ap.add_argument('--pose-topic', default='/vive/pose')
+    ap.add_argument('--pose-topic', default='/robot_pose')
     ap.add_argument('--cmd-topic', default='/rosbot3/cmd_vel')
     ap.add_argument('--plan-info-topic', default='/experiment_node/plan_info')
     ap.add_argument('--finished-topic', default='/finished_tracking')

@@ -2,18 +2,21 @@
 
 The full lab stack:
 
-  rosbot_interface  /rosbot3/vive/pose      -> /rosbot2pro/state
+  rosbot_interface  /robot_pose             -> /rosbot2pro/state
   mpc_test_node     /rosbot2pro/state + /rosbot2pro/planned_path
                                             -> /rosbot3/cmd_vel (TwistStamped)
   experiment_node   scenarios, planning     -> /rosbot2pro/planned_path
   metrics_node      pose + commands         -> run summaries / CSV / JSON
 
-Only the *pose topic* differs between lab and sim: the Vive publishes
-``/rosbot3/vive/pose``, box_sim publishes ``/vive/pose``. One ``pose_topic``
-argument covers all four nodes — it is the parameter of experiment_node and
-metrics_node, and rosbot_interface's hardcoded ``/rosbot3/vive/pose`` is
-remapped onto it (a no-op in the lab). The command interface is identical on
-both sides: box_sim also subscribes to TwistStamped on ``/rosbot3/cmd_vel``.
+Lab and sim are wired identically. The measured pose comes in on
+``/robot_pose`` (PoseStamped in the ``map`` frame) in both cases — the lab
+publisher and box_sim use that same topic, so sim.launch.py overrides nothing.
+``/vive/pose`` is the raw tracker output in the tilted ``vive_world`` frame and
+must never be used here. One ``pose_topic`` argument still covers all four
+nodes: it is the parameter of experiment_node and metrics_node, and
+rosbot_interface's hardcoded input is remapped onto it (an identity by
+default). The command interface is likewise identical: box_sim subscribes to
+TwistStamped on ``/rosbot3/cmd_vel``, the topic the MPC publishes.
 
 Two more single-point-of-truth arguments:
 
@@ -72,9 +75,8 @@ def generate_launch_description():
         # rosbot_interface + mpc_test_node (the sim launch keeps them on too).
         DeclareLaunchArgument('mpc', default_value='true'),
         DeclareLaunchArgument('metrics', default_value='true'),
-        # The one thing that differs between lab and sim; box_sim publishes
-        # /vive/pose, so sim.launch.py passes that.
-        DeclareLaunchArgument('pose_topic', default_value='/rosbot3/vive/pose'),
+        # Measured pose in the map frame, from the lab publisher or box_sim.
+        DeclareLaunchArgument('pose_topic', default_value='/robot_pose'),
         # Commands: same topic and type in both cases.
         DeclareLaunchArgument('cmd_topic', default_value='/rosbot3/cmd_vel'),
         DeclareLaunchArgument('cmd_type', default_value='TwistStamped'),
@@ -97,8 +99,8 @@ def generate_launch_description():
             name='rosbot_interface',
             output='screen',
             condition=IfCondition(use_mpc),
-            # Identity in the lab; in sim this is the /vive/pose of box_sim.
-            remappings=[('/rosbot3/vive/pose', pose_topic)],
+            # Identity at the default; follows pose_topic if it is overridden.
+            remappings=[('/robot_pose', pose_topic)],
         ),
         Node(
             package='demo_mpc',

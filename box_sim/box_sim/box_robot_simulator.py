@@ -23,7 +23,7 @@ class BoxRobotSimulator(Node):
         
         self.joint_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
-        self.pose_pub = self.create_publisher(PoseStamped, '/vive/pose', 10)
+        self.pose_pub = self.create_publisher(PoseStamped, '/robot_pose', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
         self.cmd_sub = self.create_subscription(Twist, 'cmd_vel', self.cmd_callback, 10)
         # Same command interface as the real robot, so that the MPC and the

@@ -40,7 +40,7 @@ map figures are much more useful with them.
 ## 3. Wiring / defaults
 
 metrics_node defaults match the robot workspace:
-`pose_topic:=/vive/pose` (override `/rosbot3/vive/pose` on the robot),
+`pose_topic:=/robot_pose` (the same in lab and sim),
 `cmd_topic:=/rosbot3/cmd_vel` with `cmd_type:=TwistStamped`
 (`/cmd_vel` + `Twist` when driving box_sim), `goal_radius:=0.05`
 (= MPC `tolerance_radius` — keep them equal), `plan_info_topic` and
@@ -67,7 +67,7 @@ Node(package='kappa_experiments', executable='metrics_node', name='metrics_node'
 ## 4. rosbag record list
 
 ```
-/vive/pose  (or /rosbot3/vive/pose)
+/robot_pose
 /rosbot3/cmd_vel  (or /cmd_vel in sim)
 /rosbot2pro/planned_path
 /rosbot2pro/state
@@ -83,7 +83,7 @@ Node(package='kappa_experiments', executable='metrics_node', name='metrics_node'
 
 ```
 ros2 run kappa_experiments postprocess <bag_dir> \
-    --pose-topic /rosbot3/vive/pose --cmd-topic /rosbot3/cmd_vel
+    --pose-topic /robot_pose --cmd-topic /rosbot3/cmd_vel
 ```
 Produces `summary.csv`, per-run map / error / command figures, per-run JSON,
 and prints per-scenario mean±std (execution time, time ratio, cross-track rms,
@@ -108,7 +108,7 @@ final error). Online and offline numbers come from the same
 |---|---|
 | 1. timestamps per measurement | rosbag (all topics) + `raw.measured.t` / `raw.commands.t` in each run JSON |
 | 2. x_ref, y_ref, theta_ref | `plan_info.reference` (per run) + `/rosbot2pro/planned_path` in the bag |
-| 3. x_meas, y_meas, theta_meas | `/vive/pose` in the bag + `raw.measured` in each run JSON |
+| 3. x_meas, y_meas, theta_meas | `/robot_pose` in the bag + `raw.measured` in each run JSON |
 | 4. v_ref, omega_ref | `plan_info.reference.v/omega` + `/experiment_node/planned_controls` |
 | 5. v_cmd, omega_cmd | `/rosbot3/cmd_vel` in the bag + `raw.commands` in each run JSON |
 | 6. experiment/run ID, script start/end poses | `plan_info`: session, scenario, run_index, start_pose_predefined, start_pose_used, goal_pose |

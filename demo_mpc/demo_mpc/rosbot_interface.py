@@ -27,10 +27,10 @@ class RosbotInterface(Node):
 
         self.previous_yaw = None
 
-        # Create a subscriber for the /vive_pose topic
+        # Create a subscriber for the robot pose topic (map frame)
         self.vive_pose_subscription = self.create_subscription(
             PoseStamped,
-            '/rosbot3/vive/pose',
+            '/robot_pose',
             self.vive_pose_callback,
             1
         )

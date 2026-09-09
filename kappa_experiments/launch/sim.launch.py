@@ -1,10 +1,10 @@
 """Simulation launch: box_sim + the same stack as the lab.
 
-box_sim publishes the Vive pose on ``/vive/pose`` and — since it also
-subscribes to TwistStamped on ``/rosbot3/cmd_vel`` — accepts the MPC's
-commands unchanged. Two things differ from the lab launch:
+box_sim publishes the measured pose on ``/robot_pose`` (map frame) and
+subscribes to TwistStamped on ``/rosbot3/cmd_vel``, i.e. exactly the interface
+of the lab robot — so the topics are not overridden here at all. The only
+difference from the lab launch is:
 
-``pose_topic``   ``/vive/pose`` (also remaps rosbot_interface's input);
 ``rviz_config``  ``floor_projection.rviz``, the laptop-screen view, instead of
                  the calibrated ``projector_lab.rviz`` (which carries the
                  projector's angle, scale, offset and 3840x2123 geometry).
@@ -46,8 +46,6 @@ def generate_launch_description():
                 'start_pose_source': LaunchConfiguration('start_pose_source'),
                 'mpc': LaunchConfiguration('mpc'),
                 'metrics': LaunchConfiguration('metrics'),
-                # box_sim's pose topic; also remaps rosbot_interface's input.
-                'pose_topic': '/vive/pose',
                 'map_frame': LaunchConfiguration('map_frame'),
                 'control_rate': LaunchConfiguration('control_rate'),
                 'rviz': LaunchConfiguration('rviz'),

@@ -22,10 +22,10 @@ experiment_node:
     robot_length: 0.34
 
     map_frame: "map"
-    # Overridden by the launch files: /rosbot3/vive/pose in the lab,
-    # /vive/pose in sim (box_sim). This value only applies to a bare
-    # `ros2 run kappa_experiments experiment_node`.
-    pose_topic: "/vive/pose"
+    # Measured pose of the robot in the map frame: the lab publisher and
+    # box_sim use the same topic, so lab and sim are wired identically.
+    # (/vive/pose is the raw tracker output in vive_world - never use it.)
+    pose_topic: "/robot_pose"
     path_topic: "/rosbot2pro/planned_path"
     initialpose_topic: "/initialpose"
 

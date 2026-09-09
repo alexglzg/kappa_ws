@@ -46,7 +46,7 @@ class MetricsNode(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('pose_topic', '/vive/pose'),
+                ('pose_topic', '/robot_pose'),
                 ('plan_info_topic', '/experiment_node/plan_info'),
                 ('cmd_topic', '/rosbot3/cmd_vel'),
                 ('cmd_type', 'TwistStamped'),        # 'TwistStamped' | 'Twist'

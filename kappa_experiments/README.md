@@ -10,7 +10,7 @@ ws/src/
   kappa-motion-planner/      # local library (kappa_planner importable from src/)
   kappa_experiments/         # this package
   demo_mpc/                  # rosbot_interface (pose -> state) + mpc_test_node
-  box_sim/                   # simulator: publishes /vive/pose, takes /cmd_vel (Twist)
+  box_sim/                   # simulator: publishes /robot_pose, takes /cmd_vel (Twist)
                              # and /rosbot3/cmd_vel (TwistStamped), like the robot
 ```
 
@@ -32,23 +32,27 @@ Both bring up the whole stack: `rosbot_interface` + `mpc_test_node` +
 Switches: `mpc:=false` (drops interface and MPC — planning and drawing only),
 `metrics:=false`, `rviz:=false`.
 
-**Only the pose topic differs between lab and sim.** The Vive publishes
-`/rosbot3/vive/pose`, box_sim publishes `/vive/pose`, so the single
-`pose_topic` argument (lab default `/rosbot3/vive/pose`; the sim launch passes
-`/vive/pose`) is given to `experiment_node` and `metrics_node` *and* remapped
-onto `rosbot_interface`'s hardcoded input — a no-op in the lab. Commands are
-identical on both sides: `mpc_test_node` publishes TwistStamped on
+**Lab and sim are wired identically — the sim launch overrides no topic.**
+The measured pose arrives on `/robot_pose` (PoseStamped, `map` frame) from the
+lab publisher or from box_sim, and the single `pose_topic` argument (default
+`/robot_pose`) is given to `experiment_node` and `metrics_node` *and* remapped
+onto `rosbot_interface`'s input, so one argument moves all three. Commands are
+the same on both sides too: `mpc_test_node` publishes TwistStamped on
 `/rosbot3/cmd_vel` and box_sim subscribes to exactly that (as well as to its
 original `Twist` on `/cmd_vel`), so `cmd_topic` / `cmd_type` never change.
+
+> `/vive/pose` is the **raw tracker output in the tilted `vive_world` frame**
+> and must never be used by anything here. Everything in this workspace works
+> in `map`, and `/robot_pose` is the pose already expressed in it.
 Remaining arguments: `goal_radius` (0.05 = the MPC's `tolerance_radius`),
 `output_dir` (`~/kappa_experiment_logs`), plus the three below.
 
 ```
-rosbot_interface   pose_topic  -> /rosbot2pro/state
+rosbot_interface   /robot_pose  -> /rosbot2pro/state
 mpc_test_node      /rosbot2pro/state + /rosbot2pro/planned_path
-                               -> /rosbot3/cmd_vel (TwistStamped), /finished_tracking
-experiment_node    scenarios   -> /rosbot2pro/planned_path, plan_info, markers
-metrics_node       pose_topic + /rosbot3/cmd_vel -> run summaries
+                                -> /rosbot3/cmd_vel (TwistStamped), /finished_tracking
+experiment_node    scenarios    -> /rosbot2pro/planned_path, plan_info, markers
+metrics_node       /robot_pose + /rosbot3/cmd_vel -> run summaries
 ```
 
 `map_frame` (default `map`) is the frame of everything RViz shows — markers,
@@ -82,7 +86,7 @@ Both use fixed frame `map`, matching the `map_frame` default.
 |---|---|
 | select scenario (redraws the floor, wipes previous markers) | `ros2 param set /experiment_node scenario 2` |
 | place the robot on the green START footprint; the white ring follows the Vive pose | — |
-| start recording | `ros2 bag record /rosbot3/vive/pose /rosbot3/cmd_vel /rosbot2pro/planned_path /rosbot2pro/state /finished_tracking /experiment_node/plan_info /experiment_node/planned_controls /experiment_node/experiment_markers /metrics_node/run_summary /metrics_node/live -o <bag>` (sim: `/vive/pose`) |
+| start recording | `ros2 bag record /robot_pose /rosbot3/cmd_vel /rosbot2pro/planned_path /rosbot2pro/state /finished_tracking /experiment_node/plan_info /experiment_node/planned_controls /experiment_node/experiment_markers /metrics_node/run_summary /metrics_node/live -o <bag>` (same list in lab and sim) |
 | plan (from the measured pose by default) | `ros2 service call /experiment_node/plan std_srvs/srv/Trigger` |
 | (sim only) teleport the box robot to the nominal start | `ros2 service call /experiment_node/teleport_to_start std_srvs/srv/Trigger` |
 | remove the trajectory drawing, keep the corridors | `ros2 service call /experiment_node/clear_plan std_srvs/srv/Trigger` |
@@ -111,7 +115,7 @@ but the bag.
 
 | topic | type | note |
 |---|---|---|
-| `/rosbot3/vive/pose` (param `pose_topic`) | PoseStamped | input; `/vive/pose` in sim |
+| `/robot_pose` (param `pose_topic`) | PoseStamped, `map` frame | measured pose in; same topic in lab and sim |
 | `/rosbot3/cmd_vel` | TwistStamped | MPC output; box_sim subscribes to it too |
 | `/rosbot2pro/planned_path` (param `path_topic`) | nav_msgs/Path, latched | pose `k` is at time `k*sampling_dt`; stamps = plan time + `t_k` |
 | `/experiment_node/planned_controls` | Float64MultiArray, latched | rows `[t, v, omega]` |
@@ -141,10 +145,10 @@ measured poses and commands.
 Offline, on a recorded bag:
 
 ```
-ros2 run kappa_experiments postprocess <bag_dir> --pose-topic /rosbot3/vive/pose
+ros2 run kappa_experiments postprocess <bag_dir>
 ```
-(`--pose-topic /vive/pose` for a sim bag; `--cmd-topic` defaults to
-`/rosbot3/cmd_vel`, which is right in both cases)
+(`--pose-topic` defaults to `/robot_pose` and `--cmd-topic` to
+`/rosbot3/cmd_vel`, which are right for both lab and sim bags)
 
 writes `summary.csv`, per-run map / error / command figures and per-run JSON,
 and prints per-scenario mean±std. The map figures are drawn from `plan_info`
@@ -201,7 +205,7 @@ position` when re-analysing a bag recorded in position mode.
 |---|---|
 | 1. timestamps per measurement | rosbag (all topics) + `raw.measured.t` / `raw.commands.t` per run JSON |
 | 2. x_ref, y_ref, theta_ref | `plan_info.reference` + `/rosbot2pro/planned_path` |
-| 3. x_meas, y_meas, theta_meas | `/vive/pose` in the bag + `raw.measured` |
+| 3. x_meas, y_meas, theta_meas | `/robot_pose` in the bag + `raw.measured` |
 | 4. v_ref, omega_ref | `plan_info.reference.v/omega` + `/experiment_node/planned_controls` |
 | 5. v_cmd, omega_cmd | `/rosbot3/cmd_vel` in the bag + `raw.commands` |
 | 6. run ID, script start/end poses | `plan_info`: session, scenario, run_index, start_pose_predefined, start_pose_used, goal_pose |

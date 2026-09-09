@@ -83,7 +83,7 @@ class ExperimentNode(Node):
                 ('robot_length', sc.ROBOT_LENGTH),
                 # --- topics / frames ---
                 ('map_frame', 'map'),
-                ('pose_topic', '/vive/pose'),
+                ('pose_topic', '/robot_pose'),
                 ('path_topic', '/rosbot2pro/planned_path'),
                 ('initialpose_topic', '/initialpose'),
                 # --- floor drawing ---

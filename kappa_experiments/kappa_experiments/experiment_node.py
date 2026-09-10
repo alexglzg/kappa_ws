@@ -517,8 +517,11 @@ class ExperimentNode(Node):
         if not self.get_parameter('show_measured_pose').value or self.measured_pose is None:
             return
         x, y, th = self.measured_pose
-        m = self._circle('robot', (x, y), self.r + 0.02, _color(1.0, 1.0, 1.0, 0.9),
-                         float(self.get_parameter('line_width').value))
+        # True footprint radius, like the start/goal rings: when the robot is on
+        # the start pose the two circles coincide, so the live one is told apart
+        # by style (white, 1.5x line width) rather than by being drawn larger.
+        m = self._circle('robot', (x, y), self.r, _color(1.0, 1.0, 1.0, 0.9),
+                         1.5 * float(self.get_parameter('line_width').value))
         m.points.append(Point(x=float(x), y=float(y), z=m.points[0].z))  # centre spoke
         m.points.append(Point(x=float(x + self.r * cos(th)), y=float(y + self.r * sin(th)), z=m.points[0].z))
         m.id = 0

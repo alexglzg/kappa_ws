@@ -91,7 +91,8 @@ def generate_launch_description():
                               default_value=os.path.join(share, 'config', 'projector_lab.rviz')),
         # One knob for the control frequency: MPC timer, MPC horizon and the
         # reference sample time are all derived from it.
-        DeclareLaunchArgument('control_rate', default_value='10.0'),
+        # DeclareLaunchArgument('control_rate', default_value='10.0'),
+        DeclareLaunchArgument('control_rate', default_value='20.0'),
         DeclareLaunchArgument('horizon_time', default_value='1.0'),
         Node(
             package='demo_mpc',

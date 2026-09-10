@@ -90,8 +90,9 @@ class MPCNode(Node):
         self.trajectory = self.ocp.parameter(3, grid='control')
 
         # Lagrange objective
+        # self.ocp.add_objective(self.ocp.sum(5*(x-self.trajectory[0])**2 + 5*(y-self.trajectory[1])**2 + 0.001*self.w**2 + 0.01*self.u1**2 + 0.001*self.u2**2))
         self.ocp.add_objective(self.ocp.sum(5*(x-self.trajectory[0])**2 + 5*(y-self.trajectory[1])**2 + 0.001*self.w**2 + 0.01*self.u1**2 + 0.001*self.u2**2))
-        self.ocp.add_objective(self.ocp.sum(0.1*(sin(theta)-sin(self.trajectory[2]))**2 + 0.1*(cos(theta)-cos(self.trajectory[2]))**2))
+        self.ocp.add_objective(self.ocp.sum(1.0*(sin(theta)-sin(self.trajectory[2]))**2 + 1.0*(cos(theta)-cos(self.trajectory[2]))**2))
         # self.ocp.add_objective(self.ocp.at_tf(10*(x-self.trajectory[0])**2 + 10*(y-self.trajectory[1])**2 + 0.01*self.w**2 + 0.1*self.u1**2 + 0.01*self.u2**2))
         # self.ocp.add_objective(self.ocp.at_tf(1*(sin(theta)-sin(self.trajectory[2]))**2 + 1*(cos(theta)-cos(self.trajectory[2]))**2))
 

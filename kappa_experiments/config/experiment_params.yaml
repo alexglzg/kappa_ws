@@ -12,7 +12,7 @@ experiment_node:
     # Reference sample time; must equal the MPC control period. The launch
     # files derive both from their single control_rate argument and override
     # this value, so change control_rate rather than this line.
-    sampling_dt: 0.1
+    sampling_dt: 0.05 #0.1
 
     v_max: 0.5
     v_min: 0.0

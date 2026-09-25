@@ -28,10 +28,10 @@ class MPCNode(Node):
         # change needs a node restart. The (v, omega) tracking terms are only
         # active while a planned_controls array is paired with the path
         # (ff_scale = 1); without one the cost is exactly the pose-only one.
-        self.declare_parameter('w_v_track', 1.0)
-        self.declare_parameter('w_w_track', 1.0)
-        self.declare_parameter('w_pos', 5.0)
-        self.declare_parameter('w_heading', 1.0)
+        self.declare_parameter('w_v_track', 0.05)
+        self.declare_parameter('w_w_track', 0.05)
+        self.declare_parameter('w_pos', 10.0)
+        self.declare_parameter('w_heading', 0.1)
         w_v_track = float(self.get_parameter('w_v_track').value)
         w_w_track = float(self.get_parameter('w_w_track').value)
         w_pos = float(self.get_parameter('w_pos').value)
@@ -122,12 +122,12 @@ class MPCNode(Node):
         # Lagrange objective
         # self.ocp.add_objective(self.ocp.sum(5*(x-self.trajectory[0])**2 + 5*(y-self.trajectory[1])**2 + 0.001*self.w**2 + 0.01*self.u1**2 + 0.001*self.u2**2))
         self.ocp.add_objective(self.ocp.sum(w_pos*(x-self.trajectory[0])**2 + w_pos*(y-self.trajectory[1])**2
-                                            + ff*(w_v_track*(self.v-self.trajectory[3])**2 + w_w_track*(self.w-self.trajectory[4])**2)
-                                            + (1-ff)*0.001*self.w**2
-                                            + 0.01*self.u1**2 + 0.001*self.u2**2))
+                                            + ff*(w_v_track*(self.v-self.trajectory[3])**2 + w_w_track*(self.w-self.trajectory[4])**2) ))
+                                            # + (1-ff)*0.001*self.w**2
+                                            # + 0.01*self.u1**2 + 0.001*self.u2**2))
         self.ocp.add_objective(self.ocp.sum(w_heading*(sin(theta)-sin(self.trajectory[2]))**2 + w_heading*(cos(theta)-cos(self.trajectory[2]))**2))
-        # self.ocp.add_objective(self.ocp.at_tf(10*(x-self.trajectory[0])**2 + 10*(y-self.trajectory[1])**2 + 0.01*self.w**2 + 0.1*self.u1**2 + 0.01*self.u2**2))
-        # self.ocp.add_objective(self.ocp.at_tf(1*(sin(theta)-sin(self.trajectory[2]))**2 + 1*(cos(theta)-cos(self.trajectory[2]))**2))
+        self.ocp.add_objective(self.ocp.at_tf(w_pos*(x-self.trajectory[0])**2 + w_pos*(y-self.trajectory[1])**2))
+        self.ocp.add_objective(self.ocp.at_tf(w_heading*(sin(theta)-sin(self.trajectory[2]))**2 + w_heading*(cos(theta)-cos(self.trajectory[2]))**2))
 
         # Vehicle constraints
         self.ocp.subject_to( (min_vel <= self.v) <= max_vel )

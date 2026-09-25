@@ -121,7 +121,7 @@ def _right_angle_corridors(width=0.90):
 # ---------------------------------------------------------------------------
 def experiment_1(unicycle: Unicycle) -> Scenario:
     corridor_list = _right_angle_corridors()
-    initial_pose = [-0.15, -0.35, -3 * pi / 4]
+    initial_pose = [-0.15, -0.7, pi/2]#-3 * pi / 4]
     final_pose = [2.1, 3.1, -pi / 6]
     assert_experiment_fits_floor(corridor_list, initial_pose, final_pose, robot_radius(unicycle))
     return Scenario(1, 'Experiment 1 - Right-Angle Turn', corridor_list, initial_pose, final_pose)

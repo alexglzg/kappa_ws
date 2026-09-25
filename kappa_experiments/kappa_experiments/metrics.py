@@ -326,6 +326,21 @@ class RunRecorder:
         return out
 
 
+    def trimmed(self, t_max: float) -> 'RunRecorder':
+        """A copy holding only the pose and command samples up to ``t_max``.
+
+        Used offline to drop what the bag keeps recording after a run ends
+        (the robot carried back to the start), which metrics_node never
+        collects since it disarms at the end of the run."""
+        out = RunRecorder(self.reference)
+        for row in zip(self.t, self.x, self.y, self.theta):
+            if row[0] <= t_max:
+                out.add_pose(*row)
+        for row in zip(self.cmd_t, self.cmd_v, self.cmd_w):
+            if row[0] <= t_max:
+                out.add_cmd(*row)
+        return out
+
     def raw_dict(self) -> dict:
         """Raw recorded data for the per-run file: measured poses and the
         commands sent to the robot, with their timestamps."""
@@ -335,35 +350,6 @@ class RunRecorder:
             'commands': {'t': list(self.cmd_t), 'v': list(self.cmd_v),
                          'omega': list(self.cmd_w)},
         }
-
-
-def derive_velocities(t, x, y, theta, smooth_window: int = 5):
-    """v_meas / omega_meas DERIVED from measured poses by central differences
-    (the Vive gives poses only). ``smooth_window`` is a moving-average length
-    in samples applied to the derivatives; use an odd number.
-
-    v is signed by projection of the displacement on the heading, so reversing
-    shows up as negative v.
-    """
-    t = np.asarray(t, dtype=float)
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    th = np.unwrap(np.asarray(theta, dtype=float))
-    if t.size < 3:
-        z = np.zeros_like(t)
-        return t, z, z
-    dt = np.gradient(t)
-    dt = np.where(np.abs(dt) < 1e-6, 1e-6, dt)
-    vx = np.gradient(x) / dt
-    vy = np.gradient(y) / dt
-    v = vx * np.cos(th) + vy * np.sin(th)
-    omega = np.gradient(th) / dt
-    if smooth_window and smooth_window > 1:
-        k = int(smooth_window) | 1
-        kern = np.ones(k) / k
-        v = np.convolve(v, kern, mode='same')
-        omega = np.convolve(omega, kern, mode='same')
-    return t, v, omega
 
 
 def summary_line(s: dict) -> str:

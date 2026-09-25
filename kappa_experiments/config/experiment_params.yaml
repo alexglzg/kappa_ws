@@ -14,10 +14,10 @@ experiment_node:
     # this value, so change control_rate rather than this line.
     sampling_dt: 0.05 #0.1
 
-    v_max: 0.5
+    v_max: 0.4
     v_min: 0.0
-    omega_max: 2.0
-    omega_min: -2.0
+    omega_max: 1.6
+    omega_min: -1.6
     robot_width: 0.34
     robot_length: 0.34
 

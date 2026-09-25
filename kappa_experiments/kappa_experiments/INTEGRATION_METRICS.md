@@ -140,8 +140,8 @@ no ROS and no kappa needed — the reference is built analytically):
   circle), with the full-plan fields kept alongside (see the README note).
 - An all-idle run produces no start event, no goal event, and still
   summarizes (the `timeout` path).
-- `derive_velocities` recovers the 0.5 m/s reference speed from finite
-  differences of a wobbling pose signal, and survives a 1-sample input.
+- Trimming a run at `t_end + 1 s` removes the post-run carry-back from the
+  raw data and the figures, and leaves the summary unchanged.
 
 The three checks of §6 (sim run end-to-end, idle timeout on the real
 lifecycle, two `/plan` calls in one bag) need a running ROS 2 + MPC.

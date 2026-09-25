@@ -50,10 +50,18 @@ Remaining arguments: `goal_radius` (0.05 = the MPC's `tolerance_radius`),
 ```
 rosbot_interface   /robot_pose  -> /rosbot2pro/state
 mpc_test_node      /rosbot2pro/state + /rosbot2pro/planned_path
+                   + /experiment_node/planned_controls
                                 -> /rosbot3/cmd_vel (TwistStamped), /finished_tracking
-experiment_node    scenarios    -> /rosbot2pro/planned_path, plan_info, markers
+experiment_node    scenarios    -> /rosbot2pro/planned_path, planned_controls, plan_info, markers
 metrics_node       /robot_pose + /rosbot3/cmd_vel -> run summaries
 ```
+
+`mpc_test_node` tracks the planned poses and, when the latched
+`planned_controls` array has the path's length, also the planned (v, omega)
+as a feedforward reference. Cost weights are node parameters, fixed at
+start-up: `w_pos` (5.0), `w_heading` (1.0), `w_v_track` (1.0), `w_w_track`
+(1.0). Without matching controls the velocity terms are switched off and the
+cost is exactly the pose-only one of earlier runs (one warning is logged).
 
 `map_frame` (default `map`) is the frame of everything RViz shows — markers,
 planned path and robot ring all come from `experiment_node` — so that one
@@ -151,7 +159,10 @@ ros2 run kappa_experiments postprocess <bag_dir>
 `/rosbot3/cmd_vel`, which are right for both lab and sim bags)
 
 writes `summary.csv`, per-run map / error / command figures and per-run JSON,
-and prints per-scenario mean±std. The map figures are drawn from `plan_info`
+and prints per-scenario mean±std. Samples recorded more than 1 s after the
+goal was reached (the robot being carried back) are dropped from the figures
+and the raw JSON, as `metrics_node` stops collecting at run end; a run that
+never reached the goal keeps its full trace. The map figures are drawn from `plan_info`
 alone (it carries `corridors`, `shrunken_corridors` and `circles`), so
 postprocessing needs no kappa install.
 
@@ -212,9 +223,7 @@ position` when re-analysing a bag recorded in position mode.
 | 7. analytical traversal time | `plan_info.theoretical_time` (+ `piece_times`) |
 | 8. actual start/end time | `summary.t_start` / `t_end` / `execution_time`, plus `first_cmd_time`, `first_nonzero_cmd_time`, `first_motion_time` |
 
-The Vive gives poses only, so measured v/omega are finite differences of the
-poses (`metrics.derive_velocities`, smoothed); they are stored in the
-postprocess JSON as `raw.derived_velocities`, not treated as measurements.
+The Vive gives poses only; no measured v/omega is recorded or estimated.
 If requirement 7 means the reference must start exactly at the script poses,
 run with `start_pose_source:=predefined`.
 

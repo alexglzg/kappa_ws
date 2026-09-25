@@ -25,7 +25,7 @@ from collections import defaultdict
 import numpy as np
 
 from .metrics import (CSV_FIELDS, END_CRITERIA, Reference, RunRecorder, csv_row,
-                      derive_velocities, summary_line)
+                      summary_line)
 from .trajectory_utils import yaw_from_quaternion
 
 
@@ -80,6 +80,18 @@ def load_runs(bag_path, pose_topic, cmd_topic, plan_info_topic, finished_topic):
             if current['finished_time'] is None:
                 current['finished_time'] = t
     return runs
+
+
+RUN_END_MARGIN = 1.0     # s of data kept after the goal is reached
+
+
+def trim_run(run, t_end, margin=RUN_END_MARGIN):
+    """Drop the samples recorded after the run ended (the robot being carried
+    back), as metrics_node does by disarming. A run that never reached the
+    goal keeps its full trace: there it is diagnostic."""
+    if t_end is not None:
+        run['recorder'] = run['recorder'].trimmed(t_end + margin)
+    return run
 
 
 # ---------------------------------------------------------------------------
@@ -149,12 +161,13 @@ def plot_run(run, summary, out_prefix):
         axes[0].step(ref.t, ref.v, where='post', label='reference', alpha=0.7)
         axes[1].step(ct, rec.cmd_w, where='post', label='cmd')
         axes[1].step(ref.t, ref.omega, where='post', label='reference', alpha=0.7)
-        if rec.t:
-            td, vd, wd = derive_velocities(rec.t, rec.x, rec.y, rec.theta)
-            axes[0].plot(td - t0, vd, lw=0.7, alpha=0.7, label='measured (derived)')
-            axes[1].plot(td - t0, wd, lw=0.7, alpha=0.7, label='measured (derived)')
+        for ax, cmd, r in ((axes[0], rec.cmd_v, ref.v), (axes[1], rec.cmd_w, ref.omega)):
+            vals = np.concatenate([np.asarray(cmd, dtype=float), np.asarray(r, dtype=float)])
+            lo, hi = float(np.min(vals)), float(np.max(vals))
+            margin = max(0.1 * (hi - lo), 0.05)
+            ax.set_ylim(lo - margin, hi + margin)
+            ax.legend(fontsize=8)
         axes[0].set_ylabel('v [m/s]')
-        axes[0].legend(fontsize=8)
         axes[1].set_ylabel('omega [rad/s]')
         axes[1].set_xlabel('t - t_start [s]')
         fig.savefig(out_prefix + '_commands.png', dpi=200, bbox_inches='tight')
@@ -212,12 +225,8 @@ def main(argv=None):
         run_idx = info.get('run_index', len(rows) + 1)
         prefix = os.path.join(out_dir, f'run{run_idx:03d}')
         print(f"run {run_idx} scenario {info.get('scenario')} [{reason}]: {summary_line(summary)}")
-        raw = rec.raw_dict()
-        if rec.t:
-            td, vd, wd = derive_velocities(rec.t, rec.x, rec.y, rec.theta)
-            raw['derived_velocities'] = {'t': td.tolist(), 'v': vd.tolist(),
-                                         'omega': wd.tolist(),
-                                         'note': 'finite differences of Vive poses, smoothed'}
+        trim_run(run, t_end)
+        raw = run['recorder'].raw_dict()
         with open(prefix + '.json', 'w') as f:
             json.dump({'info': info, 'summary': summary, 'raw': raw}, f)
         rows.append(csv_row(info, summary, reason))

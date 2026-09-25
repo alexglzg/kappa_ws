@@ -19,8 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from kappa_experiments.metrics import (CSV_FIELDS, END_CRITERIA, Reference,  # noqa: E402
                                        RunRecorder, append_csv_row, csv_row,
-                                       derive_velocities, point_to_polyline,
-                                       summary_line)
+                                       point_to_polyline, summary_line)
 
 DT = 0.1
 GOAL_RADIUS = 0.05
@@ -299,13 +298,84 @@ def test_csv_row_fields(info, ref):
     assert empty['cross_track_rms'] == '' and empty['end_reason'] == 'timeout'
 
 
-def test_derived_velocities(ref):
+def add_carry_back(rec: RunRecorder, ref: Reference, duration=10.0, dt=0.02):
+    """After the run: the robot is carried from the goal back to the start
+    while the bag keeps recording."""
+    t_last = rec.t[-1]
+    gx, gy, gth = ref.goal_pose
+    n = int(duration / dt)
+    for i in range(1, n + 1):
+        u = i / n
+        rec.add_pose(t_last + i * dt, gx + u * (ref.x[0] - gx), gy + u * (ref.y[0] - gy), gth)
+        rec.add_cmd(t_last + i * dt, 0.0, 0.0)
+
+
+def test_trim_drops_samples_after_run_end(ref):
     rec = RunRecorder(ref)
-    t_go = simulate(rec, ref)
-    t, v, w = derive_velocities(rec.t, rec.x, rec.y, rec.theta)
-    mid = (t > t_go + 1.0) & (t < t_go + ref.t[-1] - 1.0)
-    assert 0.3 < float(np.median(v[mid])) < 0.7        # reference runs at 0.5 m/s
-    assert derive_velocities([0.0], [0.0], [0.0], [0.0])[1].size == 1   # too few samples
+    simulate(rec, ref)
+    add_carry_back(rec, ref)
+    t_start = rec.first_nonzero_cmd_time()
+    t_end = rec.goal_reached_time(GOAL_RADIUS)
+    assert t_end is not None and rec.t[-1] > t_end + 5.0
+
+    trimmed = rec.trimmed(t_end + 1.0)
+    raw = trimmed.raw_dict()
+    assert max(raw['measured']['t']) <= t_end + 1.0
+    assert max(raw['commands']['t']) <= t_end + 1.0
+    # everything up to the cut is kept
+    assert len(trimmed.t) == sum(t <= t_end + 1.0 for t in rec.t)
+    assert trimmed.goal_reached_time(GOAL_RADIUS) == t_end
+
+    # summarize is already masked to [t_start, t_end]: the cut changes nothing
+    s_full = rec.summarize(t_start, t_end, GOAL_RADIUS)
+    s_trim = trimmed.summarize(t_start, t_end, GOAL_RADIUS)
+    s_full.pop('n_pose_samples')
+    s_trim.pop('n_pose_samples')
+    assert s_trim == s_full
+
+
+def test_trim_keeps_the_full_trace_of_an_unfinished_run(ref):
+    from kappa_experiments.postprocess import trim_run
+    rec = RunRecorder(ref)
+    simulate(rec, ref)
+    add_carry_back(rec, ref)
+    run = trim_run({'recorder': rec}, None)
+    assert run['recorder'] is rec
+
+
+def test_postprocess_figures_use_trimmed_data(tmp_path, monkeypatch, info, ref):
+    pytest.importorskip('matplotlib')
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.figure
+    import matplotlib.pyplot as plt
+    from kappa_experiments.postprocess import plot_run, trim_run
+
+    rec = RunRecorder(ref)
+    simulate(rec, ref)
+    add_carry_back(rec, ref)
+    t_start = rec.first_nonzero_cmd_time()
+    t_end = rec.goal_reached_time(GOAL_RADIUS)
+    summary = rec.summarize(t_start, t_end, GOAL_RADIUS)
+    run = trim_run({'info': info, 'recorder': rec}, t_end)
+
+    figs = []
+    monkeypatch.setattr(plt, 'close', lambda fig=None: figs.append(fig)
+                        if isinstance(fig, matplotlib.figure.Figure) else None)
+    plot_run(run, summary, str(tmp_path / 'run007'))
+    assert len(figs) == 3                      # map, errors, commands
+
+    def line(fig, label):
+        return next(l for ax in fig.axes for l in ax.get_lines() if l.get_label() == label)
+
+    executed = line(figs[0], 'executed')
+    n_kept = len(run['recorder'].t)
+    assert len(executed.get_xdata()) == n_kept < len(rec.t)
+    gx, gy, _ = ref.goal_pose
+    assert math.hypot(executed.get_xdata()[-1] - gx, executed.get_ydata()[-1] - gy) < 0.1
+    for ax in figs[2].axes:                    # commands vs t - t_start
+        assert max(line(figs[2], 'cmd').get_xdata()) <= t_end + 1.0 - t_start + 1e-9
+        assert all(l.get_label() in ('cmd', 'reference') for l in ax.get_lines())
 
 
 # ---------------------------------------------------------------------------
